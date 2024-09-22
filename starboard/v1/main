@@ -1,0 +1,69 @@
+{{$EMBED_COLOR := 0xFFFBB0}}
+{{$STARBOARD_CHANNEL_ID := 1286992440644997173}}
+{{$STAR_EMOJI := "⭐"}}
+{{$ANIMATED_STAR_EMOJI := "starred:1287142083416686662"}}
+{{$THRESHOLD := 2}}
+
+{{/*
+    STARBOARD V1
+    By @glamorouskirs
+    Github: https://github.com/GlamorousKirs/YAGPDB
+
+    Trigger type: Reaction (Added + Removed reactions)
+*/}}
+
+{{if not (eq .Channel.ID $STARBOARD_CHANNEL_ID)}}
+    {{range .Message.Reactions}}
+        {{if and (eq .Emoji.APIName $STAR_EMOJI) (ge .Count $THRESHOLD)}}
+            {{$embed := sdict
+                "description" (print $.Message.Content "\n\n-# " $.Message.Link)
+                "color" $EMBED_COLOR
+                "author" (sdict
+                    "name" $.Message.Author.Username
+                    "icon_url" ($.Message.Author.AvatarURL "512"))
+                "footer" (sdict
+                    "text" (print "𝑆𝑡𝑎𝑟𝑟𝑒𝑑 " $THRESHOLD "𝑥")
+                    "icon_url" "https://media.tenor.com/vafOLwS0j0sAAAAi/star-yıldız.gif")
+            }}
+
+            {{if $.Message.Attachments}} 
+                {{$embed.Set "image" (sdict "url" (index $.Message.Attachments 0).URL)}}
+            {{end}}
+
+            {{$x := sendMessageRetID $STARBOARD_CHANNEL_ID (cembed $embed)}}
+            {{deleteAllMessageReactions nil $.Message.ID $STAR_EMOJI}}
+            {{addMessageReactions $STARBOARD_CHANNEL_ID $x $ANIMATED_STAR_EMOJI}}
+        {{end}}
+    {{end}}
+{{end}}
+
+{{if eq .Channel.ID $STARBOARD_CHANNEL_ID}}
+    {{range .Message.Reactions}}
+        {{if and (eq .Emoji.APIName $ANIMATED_STAR_EMOJI)}}
+            {{$calc := add .Count $THRESHOLD}}
+            {{$currentCount := sub $calc 1}}
+
+            {{if lt $currentCount $THRESHOLD}}
+                {{return}}
+            {{end}}
+
+            {{$existingMessage := getMessage $STARBOARD_CHANNEL_ID $.Message.ID}}
+            {{$existingEmbed := (index $existingMessage.Embeds 0)}}
+            {{$newFooter := sdict
+                "text" (print "𝑆𝑡𝑎𝑟𝑟𝑒𝑑 " $currentCount "𝑥")
+                "icon_url" "https://media.tenor.com/vafOLwS0j0sAAAAi/star-yıldız.gif"
+            }}
+
+            {{$updatedEmbed := cembed
+                "description" $existingEmbed.Description
+                "color" $existingEmbed.Color
+                "author" $existingEmbed.Author
+                "footer" $newFooter
+                "image" $existingEmbed.Image
+                "url" $existingEmbed.URL
+            }}
+
+            {{editMessage nil $existingMessage.ID $updatedEmbed}}
+        {{end}}
+    {{end}}
+{{end}}
